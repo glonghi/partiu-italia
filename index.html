@@ -20,7 +20,16 @@
             background-color: #000;
             touch-action: manipulation;
         }
-        canvas {
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 400px;
+            max-height: 600px;
+        }
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
             border: 2px solid white;
             touch-action: none;
             -webkit-tap-highlight-color: transparent;
@@ -45,7 +54,9 @@
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+    </div>
     <script>
         // Game constants
         const WIDTH = 400;
@@ -369,13 +380,23 @@
             canvas = document.getElementById('gameCanvas');
             ctx = canvas.getContext('2d');
             
-            // Adjust for mobile
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            if (isMobile) {
-                const scale = Math.min(window.innerWidth / WIDTH, window.innerHeight / HEIGHT) * 0.9;
+            // Adjust canvas size while maintaining aspect ratio
+            function resizeCanvas() {
+                const container = document.getElementById('gameContainer');
+                const containerWidth = container.clientWidth;
+                const containerHeight = container.clientHeight;
+                
+                const scale = Math.min(containerWidth / WIDTH, containerHeight / HEIGHT);
+                
                 canvas.style.width = (WIDTH * scale) + 'px';
                 canvas.style.height = (HEIGHT * scale) + 'px';
             }
+            
+            // Initial resize
+            resizeCanvas();
+            
+            // Resize on window changes
+            window.addEventListener('resize', resizeCanvas);
             
             // Start music muted first to satisfy autoplay policies
             if (backgroundMusic) {
