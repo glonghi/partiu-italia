@@ -78,6 +78,8 @@
         let pipeSpeed = 2;
         let gameOver = false;
         let gameWon = false;
+        let lastTime = 0;
+        let deltaTime = 0;
         
         // Assets
         let backgroundImg, birdImg, pipeImgs = [], winScreenImg;
@@ -117,26 +119,20 @@
             showStartScreen();
         }
 
-        // Touch event handling
-        function setupControls() {
-            // Mobile touch
-            canvas.addEventListener('touchstart', e => {
-                e.preventDefault();
-                handleJump();
-            }, { passive: false });
+        // Physics with delta time
+        function updatePhysics() {
+            const now = performance.now();
+            deltaTime = (now - lastTime) / 1000;
+            lastTime = now;
 
-            // Mouse click
-            canvas.addEventListener('click', handleJump);
-
-            // Keyboard
-            document.addEventListener('keydown', e => {
-                if (e.code === 'Space') {
-                    e.preventDefault();
-                    handleJump();
-                }
-            });
+            if (!gameOver && !gameWon) {
+                velocity += gravity * deltaTime * 60; // Normalized to 60fps
+                birdY += velocity * deltaTime * 60;
+                birdRect.y = birdY;
+            }
         }
 
+        // Input handling
         function handleJump() {
             if (!gameOver && !gameWon && flapSound) {
                 velocity = -6;
@@ -149,22 +145,14 @@
             }
         }
 
-        // Drawing functions
-        function drawCenteredText(text, y, color = 'white', fontSize = 24) {
-            ctx.font = `${fontSize}px Arial`;
-            ctx.fillStyle = color;
-            ctx.textAlign = 'center';
-            ctx.fillText(text, GAME_WIDTH / 2, y);
-        }
-
         // Screens
         function showStartScreen() {
             function draw() {
                 ctx.drawImage(backgroundImg, 0, 0, GAME_WIDTH, GAME_HEIGHT);
                 drawCenteredText("Preciso da sua ajuda para", GAME_HEIGHT / 3);
                 drawCenteredText("encontrar a Jéssica na Toscana!", GAME_HEIGHT / 3 + 30);
-                drawCenteredText("Pressione espaço", GAME_HEIGHT / 3 + 200);
-                drawCenteredText("ou clique para pular.", GAME_HEIGHT / 3 + 225);
+                drawCenteredText("Toque na tela", GAME_HEIGHT / 3 + 200);
+                drawCenteredText("ou pressione espaço para pular", GAME_HEIGHT / 3 + 225);
                 drawCenteredText(`Faça ${WINNING_SCORE} pontos para ganhar`, GAME_HEIGHT / 3 + 290);
                 
                 ctx.fillStyle = 'white';
@@ -275,21 +263,19 @@
 
         function startGame() {
             resetGame();
+            lastTime = performance.now();
             gameLoop();
         }
 
-        function gameLoop() {
+        function gameLoop(timestamp) {
+            updatePhysics();
+            
             ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
             ctx.drawImage(backgroundImg, 0, 0, GAME_WIDTH, GAME_HEIGHT);
             
             if (!gameOver && !gameWon) {
-                // Bird physics
-                velocity += gravity;
-                birdY += velocity;
-                birdRect.y = birdY;
-                
                 // Pipe movement
-                pipes.forEach(pipe => pipe.x -= pipeSpeed);
+                pipes.forEach(pipe => pipe.x -= pipeSpeed * deltaTime * 60);
                 pipes = pipes.filter(pipe => pipe.x > -PIPE_WIDTH);
                 
                 if (pipes[pipes.length - 1].x < GAME_WIDTH - PIPE_DISTANCE) {
@@ -381,53 +367,71 @@
             return mx > x && mx < x + w && my > y && my < y + h;
         }
 
+        function drawCenteredText(text, y, color = 'white', fontSize = 24) {
+            ctx.font = `${fontSize}px Arial`;
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.fillText(text, GAME_WIDTH / 2, y);
+        }
+
         // Asset loading
-        function loadAssets() {
-            // Images
-            const loadImage = (src) => new Promise(resolve => {
+        async function loadAssets() {
+            try {
+                // Load images
+                backgroundImg = await loadImage('assets/background.png');
+                birdImg = await loadImage('assets/bird.png');
+                pipeImgs[0] = await loadImage('assets/pipe1.png');
+                pipeImgs[1] = await loadImage('assets/pipe2.png');
+                pipeImgs[2] = await loadImage('assets/pipe3.png');
+                winScreenImg = await loadImage('assets/win_screen.png');
+                
+                // Load audio
+                flapSound = await loadAudio('assets/flap.mp3');
+                backgroundMusic = await loadAudio('assets/background_music.mp3');
+                backgroundMusic.loop = true;
+                
+                setupControls();
+                initGame();
+            } catch(error) {
+                console.error('Error loading assets:', error);
+            }
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
                 const img = new Image();
                 img.src = src;
-                img.onload = () => {
-                    assetsLoaded++;
-                    resolve(img);
-                };
+                img.onload = () => resolve(img);
+                img.onerror = reject;
             });
+        }
 
-            // Audio
-            const loadAudio = (src) => {
+        function loadAudio(src) {
+            return new Promise((resolve, reject) => {
                 try {
                     const audio = new Audio(src);
-                    audio.addEventListener('canplaythrough', () => assetsLoaded++);
-                    return audio;
-                } catch(e) {
-                    console.error("Audio error:", e);
-                    assetsLoaded++;
-                    return null;
+                    audio.addEventListener('canplaythrough', () => resolve(audio));
+                    audio.addEventListener('error', reject);
+                } catch(error) {
+                    reject(error);
                 }
-            };
+            });
+        }
 
-            // Load all assets
-            Promise.all([
-                loadImage('assets/background.png').then(img => backgroundImg = img),
-                loadImage('assets/bird.png').then(img => birdImg = img),
-                loadImage('assets/pipe1.png').then(img => pipeImgs[0] = img),
-                loadImage('assets/pipe2.png').then(img => pipeImgs[1] = img),
-                loadImage('assets/pipe3.png').then(img => pipeImgs[2] = img),
-                loadImage('assets/win_screen.png').then(img => winScreenImg = img),
-            ]).then(() => {
-                // Audio
-                flapSound = loadAudio('assets/flap.mp3');
-                backgroundMusic = loadAudio('assets/background_music.mp3');
-                if (backgroundMusic) backgroundMusic.loop = true;
-                
-                // Check if all assets loaded
-                const checkReady = setInterval(() => {
-                    if (assetsLoaded >= totalAssets) {
-                        clearInterval(checkReady);
-                        setupControls();
-                        initGame();
-                    }
-                }, 100);
+        // Setup controls
+        function setupControls() {
+            canvas.addEventListener('touchstart', e => {
+                e.preventDefault();
+                handleJump();
+            }, { passive: false });
+
+            canvas.addEventListener('click', handleJump);
+
+            document.addEventListener('keydown', e => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    handleJump();
+                }
             });
         }
 
