@@ -9,39 +9,33 @@
             padding: 0;
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
+            touch-action: none;
             -webkit-user-select: none;
             user-select: none;
         }
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            touch-action: none;
-            background-color: #000;
-        }
         body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
-            position: fixed;
+            background-color: #000;
         }
         #gameContainer {
             position: relative;
-            width: 100%;
-            height: 100%;
+            width: 100vmin;
+            height: 150vmin;
             max-width: 400px;
             max-height: 600px;
-            margin: auto;
         }
         #gameCanvas {
             width: 100%;
             height: 100%;
-            display: block;
-            border: 2px solid white;
+            image-rendering: crisp-edges;
         }
-        @media screen and (orientation: landscape) {
-            #gameContainer::before {
+        @media screen and (orientation: landscape) and (max-width: 768px) {
+            body::before {
                 content: "Please rotate your device to portrait mode";
                 position: fixed;
                 top: 0;
@@ -74,9 +68,7 @@
         const PIPE_DISTANCE = 200;
         
         // Game state
-        let canvas, ctx;
-        let gameWidth, gameHeight;
-        let scaleFactor = 1;
+        let canvas, ctx, scaleFactor;
         let birdX = 50, birdY = GAME_HEIGHT / 2;
         let birdRect = { x: birdX, y: birdY, width: 40, height: 30 };
         let gravity = 0.3;
@@ -89,81 +81,359 @@
         
         // Assets
         let backgroundImg, birdImg, pipeImgs = [], winScreenImg;
-        let flapSound = null, backgroundMusic = null;
+        let flapSound, backgroundMusic;
         let assetsLoaded = 0;
         const totalAssets = 7;
 
-        // Initialize game with proper mobile scaling
+        // Initialize game with proper scaling
         function initGame() {
             const container = document.getElementById('gameContainer');
             canvas = document.getElementById('gameCanvas');
             ctx = canvas.getContext('2d');
             
-            // Set canvas size to match game dimensions
+            // Set canvas resolution
             canvas.width = GAME_WIDTH;
             canvas.height = GAME_HEIGHT;
             
-            // Calculate scaling for mobile devices
-            function resizeCanvas() {
-                const containerWidth = container.clientWidth;
-                const containerHeight = container.clientHeight;
-                
-                // Calculate scale to fit container
-                const scaleX = containerWidth / GAME_WIDTH;
-                const scaleY = containerHeight / GAME_HEIGHT;
-                scaleFactor = Math.min(scaleX, scaleY);
-                
-                // Apply scaling
-                canvas.style.width = (GAME_WIDTH * scaleFactor) + 'px';
-                canvas.style.height = (GAME_HEIGHT * scaleFactor) + 'px';
-            }
+            // Calculate scale factor
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            scaleFactor = Math.min(
+                containerWidth / GAME_WIDTH,
+                containerHeight / GAME_HEIGHT
+            );
             
-            // Initial resize
-            resizeCanvas();
+            // Apply scaling
+            canvas.style.transform = `scale(${scaleFactor})`;
             
-            // Handle window resizing
-            window.addEventListener('resize', resizeCanvas);
-            
-            // Start music muted first to satisfy autoplay policies
+            // Start music
             if (backgroundMusic) {
                 backgroundMusic.muted = true;
                 backgroundMusic.play()
-                    .then(() => {
-                        backgroundMusic.muted = false;
-                    })
-                    .catch(e => {
-                        console.log("Autoplay prevented, will start after user interaction");
-                    });
+                    .then(() => backgroundMusic.muted = false)
+                    .catch(console.error);
             }
             
             showStartScreen();
         }
 
-        // [Rest of your game functions remain the same, but use GAME_WIDTH/GAME_HEIGHT instead of WIDTH/HEIGHT]
-        // Pipe creation, drawing functions, screens, game logic etc.
-        // ...
-
-        // Prevent default touch behaviors
-        document.addEventListener('touchstart', function(e) {
-            if (e.target === canvas) {
+        // Touch event handling
+        function setupControls() {
+            // Mobile touch
+            canvas.addEventListener('touchstart', e => {
                 e.preventDefault();
+                handleJump();
+            }, { passive: false });
+
+            // Mouse click
+            canvas.addEventListener('click', handleJump);
+
+            // Keyboard
+            document.addEventListener('keydown', e => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    handleJump();
+                }
+            });
+        }
+
+        function handleJump() {
+            if (!gameOver && !gameWon && flapSound) {
+                velocity = -6;
+                try {
+                    flapSound.currentTime = 0;
+                    flapSound.play().catch(() => {});
+                } catch(e) {
+                    console.error("Sound error:", e);
+                }
             }
-        }, { passive: false });
+        }
 
-        document.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-        }, { passive: false });
+        // Drawing functions
+        function drawCenteredText(text, y, color = 'white', fontSize = 24) {
+            ctx.font = `${fontSize}px Arial`;
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.fillText(text, GAME_WIDTH / 2, y);
+        }
 
-        document.addEventListener('touchend', function(e) {
-            if (e.target === canvas) {
-                e.preventDefault();
+        // Screens
+        function showStartScreen() {
+            function draw() {
+                ctx.drawImage(backgroundImg, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+                drawCenteredText("Preciso da sua ajuda para", GAME_HEIGHT / 3);
+                drawCenteredText("encontrar a Jéssica na Toscana!", GAME_HEIGHT / 3 + 30);
+                drawCenteredText("Pressione espaço", GAME_HEIGHT / 3 + 200);
+                drawCenteredText("ou clique para pular.", GAME_HEIGHT / 3 + 225);
+                drawCenteredText(`Faça ${WINNING_SCORE} pontos para ganhar`, GAME_HEIGHT / 3 + 290);
+                
+                ctx.fillStyle = 'white';
+                ctx.fillRect(GAME_WIDTH / 2 - 70, GAME_HEIGHT / 2 + 40, 140, 35);
+                drawCenteredText("BORA LÁ", GAME_HEIGHT / 2 + 65, 'black');
             }
-        }, { passive: false });
+            
+            function handleStart(e) {
+                const x = GAME_WIDTH / 2 - 70;
+                const y = GAME_HEIGHT / 2 + 40;
+                const w = 140, h = 35;
+                
+                if (checkButton(e, x, y, w, h)) {
+                    if (backgroundMusic) backgroundMusic.play().catch(console.error);
+                    document.removeEventListener('click', handleStart);
+                    document.removeEventListener('touchstart', handleStart);
+                    startGame();
+                }
+            }
+            
+            draw();
+            document.addEventListener('click', handleStart);
+            document.addEventListener('touchstart', handleStart);
+        }
 
-        // Load assets and start game when ready
-        window.addEventListener('load', function() {
-            loadAssets();
-        });
+        function showGameOverScreen() {
+            function draw() {
+                ctx.drawImage(backgroundImg, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+                drawCenteredText("Aah não!! Perdemos a Jéssica!", GAME_HEIGHT / 3);
+                ctx.fillStyle = 'white';
+                ctx.fillRect(GAME_WIDTH / 2 - 80, GAME_HEIGHT / 2 + 20, 160, 35);
+                drawCenteredText("Bora de novo", GAME_HEIGHT / 2 + 45, 'black');
+            }
+            
+            function handleRestart(e) {
+                const x = GAME_WIDTH / 2 - 80;
+                const y = GAME_HEIGHT / 2 + 20;
+                const w = 160, h = 35;
+                
+                if (checkButton(e, x, y, w, h)) {
+                    document.removeEventListener('click', handleRestart);
+                    document.removeEventListener('touchstart', handleRestart);
+                    resetGame();
+                    startGame();
+                }
+            }
+            
+            draw();
+            document.addEventListener('click', handleRestart);
+            document.addEventListener('touchstart', handleRestart);
+        }
+
+        function showWinningScreen() {
+            function draw() {
+                ctx.drawImage(winScreenImg, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+                drawCenteredText("CONSEGUIMOS!!", GAME_HEIGHT / 3, 'white', 28);
+                drawCenteredText("Obrigado pela ajuda e por", GAME_HEIGHT / 3 + 40);
+                drawCenteredText("fazer parte da minha vida", GAME_HEIGHT / 3 + 70);
+                drawCenteredText("<3", GAME_HEIGHT / 3 + 100);
+                drawCenteredText("Você aceita ser meu padrinho?", GAME_HEIGHT / 3 + 140);
+                
+                ctx.fillStyle = 'white';
+                ctx.fillRect(GAME_WIDTH / 2 - 110, GAME_HEIGHT / 2 + 130, 220, 35);
+                drawCenteredText("JOGAR DE NOVO", GAME_HEIGHT / 2 + 155, 'black');
+            }
+            
+            function handleRestart(e) {
+                const x = GAME_WIDTH / 2 - 110;
+                const y = GAME_HEIGHT / 2 + 130;
+                const w = 220, h = 35;
+                
+                if (checkButton(e, x, y, w, h)) {
+                    document.removeEventListener('click', handleRestart);
+                    document.removeEventListener('touchstart', handleRestart);
+                    resetGame();
+                    startGame();
+                }
+            }
+            
+            draw();
+            document.addEventListener('click', handleRestart);
+            document.addEventListener('touchstart', handleRestart);
+        }
+
+        // Game logic
+        function createPipe() {
+            const minGap = 100;
+            const maxGap = GAME_HEIGHT - PIPE_GAP - 100;
+            const gapPosition = Math.random() * (maxGap - minGap) + minGap;
+            return {
+                x: GAME_WIDTH,
+                gapPosition: gapPosition,
+                image: pipeImgs[Math.floor(Math.random() * pipeImgs.length)],
+                passed: false
+            };
+        }
+
+        function resetGame() {
+            birdY = GAME_HEIGHT / 2;
+            velocity = 0;
+            pipes = [createPipe()];
+            gameOver = false;
+            gameWon = false;
+            score = 0;
+            pipeSpeed = 2;
+            birdRect.y = birdY;
+        }
+
+        function startGame() {
+            resetGame();
+            gameLoop();
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            ctx.drawImage(backgroundImg, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            if (!gameOver && !gameWon) {
+                // Bird physics
+                velocity += gravity;
+                birdY += velocity;
+                birdRect.y = birdY;
+                
+                // Pipe movement
+                pipes.forEach(pipe => pipe.x -= pipeSpeed);
+                pipes = pipes.filter(pipe => pipe.x > -PIPE_WIDTH);
+                
+                if (pipes[pipes.length - 1].x < GAME_WIDTH - PIPE_DISTANCE) {
+                    pipes.push(createPipe());
+                }
+                
+                // Collision detection
+                pipes.forEach(pipe => {
+                    const topPipe = {
+                        x: pipe.x,
+                        y: pipe.gapPosition - PIPE_HEIGHT,
+                        width: PIPE_WIDTH,
+                        height: PIPE_HEIGHT
+                    };
+                    
+                    const bottomPipe = {
+                        x: pipe.x,
+                        y: pipe.gapPosition + PIPE_GAP,
+                        width: PIPE_WIDTH,
+                        height: PIPE_HEIGHT
+                    };
+                    
+                    if (checkCollision(birdRect, topPipe) || 
+                       checkCollision(birdRect, bottomPipe) || 
+                       birdY < 0 || birdY > GAME_HEIGHT) {
+                        gameOver = true;
+                    }
+                    
+                    if (birdX > pipe.x + PIPE_WIDTH && !pipe.passed) {
+                        score++;
+                        pipe.passed = true;
+                        pipeSpeed += 0.2;
+                    }
+                });
+                
+                if (score >= WINNING_SCORE) gameWon = true;
+            }
+            
+            // Draw pipes
+            pipes.forEach(pipe => {
+                ctx.save();
+                ctx.translate(pipe.x, pipe.gapPosition);
+                ctx.scale(1, -1);
+                ctx.drawImage(pipe.image, 0, 0, PIPE_WIDTH, PIPE_HEIGHT);
+                ctx.restore();
+                ctx.drawImage(pipe.image, pipe.x, pipe.gapPosition + PIPE_GAP, PIPE_WIDTH, PIPE_HEIGHT);
+            });
+            
+            // Draw bird
+            ctx.save();
+            ctx.translate(birdX + 20, birdY + 15);
+            ctx.rotate(-velocity * 3 * Math.PI / 180);
+            ctx.drawImage(birdImg, -20, -15, 40, 30);
+            ctx.restore();
+            
+            // Draw score
+            drawCenteredText(`Score: ${score}`, 50);
+            
+            // Handle game states
+            if (gameOver) showGameOverScreen();
+            else if (gameWon) showWinningScreen();
+            else requestAnimationFrame(gameLoop);
+        }
+
+        // Utilities
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        function checkButton(e, x, y, w, h) {
+            const rect = canvas.getBoundingClientRect();
+            let mx, my;
+            
+            if (e.type.includes('touch')) {
+                mx = e.touches[0].clientX - rect.left;
+                my = e.touches[0].clientY - rect.top;
+            } else {
+                mx = e.clientX - rect.left;
+                my = e.clientY - rect.top;
+            }
+            
+            // Convert to game coordinates
+            mx = (mx / scaleFactor);
+            my = (my / scaleFactor);
+            
+            return mx > x && mx < x + w && my > y && my < y + h;
+        }
+
+        // Asset loading
+        function loadAssets() {
+            // Images
+            const loadImage = (src) => new Promise(resolve => {
+                const img = new Image();
+                img.src = src;
+                img.onload = () => {
+                    assetsLoaded++;
+                    resolve(img);
+                };
+            });
+
+            // Audio
+            const loadAudio = (src) => {
+                try {
+                    const audio = new Audio(src);
+                    audio.addEventListener('canplaythrough', () => assetsLoaded++);
+                    return audio;
+                } catch(e) {
+                    console.error("Audio error:", e);
+                    assetsLoaded++;
+                    return null;
+                }
+            };
+
+            // Load all assets
+            Promise.all([
+                loadImage('assets/background.png').then(img => backgroundImg = img),
+                loadImage('assets/bird.png').then(img => birdImg = img),
+                loadImage('assets/pipe1.png').then(img => pipeImgs[0] = img),
+                loadImage('assets/pipe2.png').then(img => pipeImgs[1] = img),
+                loadImage('assets/pipe3.png').then(img => pipeImgs[2] = img),
+                loadImage('assets/win_screen.png').then(img => winScreenImg = img),
+            ]).then(() => {
+                // Audio
+                flapSound = loadAudio('assets/flap.mp3');
+                backgroundMusic = loadAudio('assets/background_music.mp3');
+                if (backgroundMusic) backgroundMusic.loop = true;
+                
+                // Check if all assets loaded
+                const checkReady = setInterval(() => {
+                    if (assetsLoaded >= totalAssets) {
+                        clearInterval(checkReady);
+                        setupControls();
+                        initGame();
+                    }
+                }, 100);
+            });
+        }
+
+        // Start the game
+        loadAssets();
+        window.addEventListener('resize', initGame);
     </script>
 </body>
 </html>
