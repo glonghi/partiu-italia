@@ -21,7 +21,7 @@
             touch-action: manipulation;
         }
         canvas {
-            border: 2px solid white;
+            border: 4px solid white; /* Doubled from 2px */
             touch-action: none;
             -webkit-tap-highlight-color: transparent;
         }
@@ -39,43 +39,43 @@
                 justify-content: center;
                 align-items: center;
                 z-index: 100;
-                font-size: 24px;
+                font-size: 48px; /* Doubled from 24px */
             }
         }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <canvas id="gameCanvas" width="800" height="1200"></canvas> <!-- Doubled from 400x600 -->
     <script>
-        // Game constants
-        const WIDTH = 400;
-        const HEIGHT = 600;
-        const WINNING_SCORE = 10;
-        const PIPE_GAP = 150;
-        const PIPE_WIDTH = 80;
-        const PIPE_HEIGHT = 400;
-        const PIPE_DISTANCE = 200;
+        // Game constants - ALL DOUBLED
+        const WIDTH = 800;  // Was 400
+        const HEIGHT = 1200; // Was 600
+        const WINNING_SCORE = 10; // Same
+        const PIPE_GAP = 300;    // Was 150
+        const PIPE_WIDTH = 160;   // Was 80
+        const PIPE_HEIGHT = 800;  // Was 400
+        const PIPE_DISTANCE = 400; // Was 200
         
         // Game state
         let canvas, ctx;
-        let birdX = 50, birdY = HEIGHT / 2;
-        let birdRect = { x: birdX, y: birdY, width: 40, height: 30 };
-        let gravity = 0.3;
-        let velocity = 0;
-        let pipes = [];
-        let score = 0;
-        let pipeSpeed = 2;
-        let gameOver = false;
-        let gameWon = false;
+        let birdX = 100, birdY = HEIGHT / 2; // Was 50
+        let birdRect = { x: birdX, y: birdY, width: 80, height: 60 }; // Was 40x30
+        let gravity = 0.3; // Same
+        let velocity = 0; // Same
+        let pipes = []; // Same
+        let score = 0; // Same
+        let pipeSpeed = 2; // Same
+        let gameOver = false; // Same
+        let gameWon = false; // Same
         
         // Assets
         let backgroundImg, birdImg, pipeImgs = [], winScreenImg;
         let flapSound = null, backgroundMusic = null;
         let assetsLoaded = 0;
-        const totalAssets = 7;
+        const totalAssets = 7; // Same
 
         // Drawing functions
-        function drawCenteredText(text, y, color = 'white', fontSize = 24) {
+        function drawCenteredText(text, y, color = 'white', fontSize = 48) { // Font size doubled
             ctx.font = `${fontSize}px Arial`;
             ctx.fillStyle = color;
             ctx.textAlign = 'center';
@@ -87,19 +87,19 @@
             function draw() {
                 ctx.drawImage(backgroundImg, 0, 0, WIDTH, HEIGHT);
                 drawCenteredText("Preciso da sua ajuda para", HEIGHT / 3);
-                drawCenteredText("encontrar a Jéssica na Toscana!", HEIGHT / 3 + 30);
-                drawCenteredText("Pressione espaço", HEIGHT / 3 + 200);
-                drawCenteredText("ou clique para pular.", HEIGHT / 3 + 225);
-                drawCenteredText(`Faça ${WINNING_SCORE} pontos para ganhar`, HEIGHT / 3 + 290);
+                drawCenteredText("encontrar a Jéssica na Toscana!", HEIGHT / 3 + 60); // Spacing doubled
+                drawCenteredText("Pressione espaço", HEIGHT / 3 + 400); // Was 200
+                drawCenteredText("ou clique para pular.", HEIGHT / 3 + 450); // Was 225
+                drawCenteredText(`Faça ${WINNING_SCORE} pontos para ganhar`, HEIGHT / 3 + 580); // Was 290
                 
                 ctx.fillStyle = 'white';
-                ctx.fillRect(WIDTH / 2 - 70, HEIGHT / 2 + 40, 140, 35);
-                drawCenteredText("BORA LÁ", HEIGHT / 2 + 65, 'black');
+                ctx.fillRect(WIDTH / 2 - 140, HEIGHT / 2 + 80, 280, 70); // All doubled (was 70,40,140,35)
+                drawCenteredText("BORA LÁ", HEIGHT / 2 + 130, 'black'); // Position adjusted
             }
             
             function handleStart(e) {
-                if ((e.type === 'click' && checkButton(e, WIDTH/2 - 70, HEIGHT/2 + 40, 140, 35)) || 
-                    (e.type === 'touchstart' && checkButton(e, WIDTH/2 - 70, HEIGHT/2 + 40, 140, 35))) {
+                if ((e.type === 'click' && checkButton(e, WIDTH/2 - 140, HEIGHT/2 + 80, 280, 70)) || 
+                    (e.type === 'touchstart' && checkButton(e, WIDTH/2 - 140, HEIGHT/2 + 80, 280, 70))) {
                     // Try to start music again on user interaction
                     if (backgroundMusic) {
                         backgroundMusic.play().catch(e => console.log("Music error:", e));
@@ -121,13 +121,13 @@
                 ctx.drawImage(backgroundImg, 0, 0, WIDTH, HEIGHT);
                 drawCenteredText("Aah não!! Perdemos a Jéssica!", HEIGHT / 3);
                 ctx.fillStyle = 'white';
-                ctx.fillRect(WIDTH / 2 - 80, HEIGHT / 2 + 20, 160, 35);
-                drawCenteredText("Bora de novo", HEIGHT / 2 + 45, 'black');
+                ctx.fillRect(WIDTH / 2 - 160, HEIGHT / 2 + 40, 320, 70); // Doubled (was 80,20,160,35)
+                drawCenteredText("Bora de novo", HEIGHT / 2 + 90, 'black'); // Position adjusted
             }
             
             function handleRestart(e) {
-                if ((e.type === 'click' && checkButton(e, WIDTH/2 - 80, HEIGHT/2 + 20, 160, 35)) || 
-                    (e.type === 'touchstart' && checkButton(e, WIDTH/2 - 80, HEIGHT/2 + 20, 160, 35))) {
+                if ((e.type === 'click' && checkButton(e, WIDTH/2 - 160, HEIGHT/2 + 40, 320, 70)) || 
+                    (e.type === 'touchstart' && checkButton(e, WIDTH/2 - 160, HEIGHT/2 + 40, 320, 70))) {
                     document.removeEventListener('click', handleRestart);
                     document.removeEventListener('touchstart', handleRestart);
                     resetGame();
@@ -143,20 +143,20 @@
         function showWinningScreen() {
             function draw() {
                 ctx.drawImage(winScreenImg, 0, 0, WIDTH, HEIGHT);
-                drawCenteredText("CONSEGUIMOS!!", HEIGHT / 3, 'white', 28);
-                drawCenteredText("Obrigado pela ajuda e por", HEIGHT / 3 + 40);
-                drawCenteredText("fazer parte da minha vida", HEIGHT / 3 + 70);
-                drawCenteredText("<3", HEIGHT / 3 + 100);
-                drawCenteredText("Você aceita ser meu padrinho?", HEIGHT / 3 + 140);
+                drawCenteredText("CONSEGUIMOS!!", HEIGHT / 3, 'white', 56); // Font size doubled
+                drawCenteredText("Obrigado pela ajuda e por", HEIGHT / 3 + 80); // Spacing doubled
+                drawCenteredText("fazer parte da minha vida", HEIGHT / 3 + 140); // Spacing doubled
+                drawCenteredText("<3", HEIGHT / 3 + 200); // Spacing doubled
+                drawCenteredText("Você aceita ser meu padrinho?", HEIGHT / 3 + 280); // Spacing doubled
                 
                 ctx.fillStyle = 'white';
-                ctx.fillRect(WIDTH / 2 - 110, HEIGHT / 2 + 130, 220, 35);
-                drawCenteredText("JOGAR DE NOVO", HEIGHT / 2 + 155, 'black');
+                ctx.fillRect(WIDTH / 2 - 220, HEIGHT / 2 + 260, 440, 70); // Doubled (was 110,130,220,35)
+                drawCenteredText("JOGAR DE NOVO", HEIGHT / 2 + 310, 'black'); // Position adjusted
             }
             
             function handleRestart(e) {
-                if ((e.type === 'click' && checkButton(e, WIDTH/2 - 110, HEIGHT/2 + 130, 220, 35)) || 
-                    (e.type === 'touchstart' && checkButton(e, WIDTH/2 - 110, HEIGHT/2 + 130, 220, 35))) {
+                if ((e.type === 'click' && checkButton(e, WIDTH/2 - 220, HEIGHT/2 + 260, 440, 70)) || 
+                    (e.type === 'touchstart' && checkButton(e, WIDTH/2 - 220, HEIGHT/2 + 260, 440, 70))) {
                     document.removeEventListener('click', handleRestart);
                     document.removeEventListener('touchstart', handleRestart);
                     resetGame();
@@ -249,15 +249,15 @@
                 ctx.drawImage(pipe.image, pipe.x, pipe.gapPosition + PIPE_GAP, PIPE_WIDTH, PIPE_HEIGHT);
             });
             
-            // Draw bird
+            // Draw bird (size doubled)
             ctx.save();
-            ctx.translate(birdX + 20, birdY + 15);
+            ctx.translate(birdX + 40, birdY + 30); // Was 20,15
             ctx.rotate(-velocity * 3 * Math.PI / 180);
-            ctx.drawImage(birdImg, -20, -15, 40, 30);
+            ctx.drawImage(birdImg, -40, -30, 80, 60); // Was 40,30
             ctx.restore();
             
             // Draw score
-            drawCenteredText(`Score: ${score}`, 50);
+            drawCenteredText(`Score: ${score}`, 100); // Position adjusted
             
             // Handle game states
             if (gameOver) showGameOverScreen();
@@ -285,13 +285,17 @@
                 my = e.clientY - rect.top;
             }
             
+            // Convert to game coordinates (accounting for 2x size)
+            mx = (mx / (rect.width / WIDTH));
+            my = (my / (rect.height / HEIGHT));
+            
             return mx > x && mx < x + w && my > y && my < y + h;
         }
         
         // Pipe creation with proper gap
         function createPipe() {
-            const minGap = 100;
-            const maxGap = HEIGHT - PIPE_GAP - 100;
+            const minGap = 200; // Was 100
+            const maxGap = HEIGHT - PIPE_GAP - 200; // Was 100
             const gapPosition = Math.random() * (maxGap - minGap) + minGap;
             return {
                 x: WIDTH,
